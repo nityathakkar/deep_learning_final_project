@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import sys
 from sklearn.preprocessing import MinMaxScaler
+import heapq
 
 # Load csv file into pandas dataframes
 def load_data(path_exp, path_labels):
@@ -39,12 +40,16 @@ def calc_variance(exp_df):
     for col_name in exp_df.columns:
         variance_dict[col_name] = exp_df.var()[col_name]
 
-    sorted_dict = dict(sorted(variance_dict.items(), key=lambda item: item[1], reverse=True))
+    #sorted_dict = dict(sorted(variance_dict.items(), key=lambda item: item[1], reverse=True))
     # TO DO: get first 1000 items
     # top_1000 = take(1000, sorted_dict.iteritems())
-    
-    keys = top_1000.keys()
-    df_subset = exp_df[:, keys]
+    print("dict size before", len(variance_dict))
+    print("taking top 10000")
+    top_1000 = heapq.nlargest(2, variance_dict, key=variance_dict.get)
+    #keys = top_1000.keys()
+    print(type(top_1000))
+    df_subset = exp_df.loc[:, top_1000]
+    print("dict_size_after", len(top_1000))
     return df_subset
 
 # Construct gene adjacency network from the selected genes
@@ -71,5 +76,7 @@ if __name__ == '__main__':
     print("Calc var")
     var_df = calc_variance(normalize_df)
     print(var_df)
+
+
 
     
