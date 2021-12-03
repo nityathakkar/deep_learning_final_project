@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
 import sys
-from sklearn.preprocessing import MinMaxScaler
+# from sklearn.preprocessing import MinMaxScaler
 import heapq
 import stringdb
 import math
-from tqdm import tqdm
 from statistics import variance
 
 # Load csv file into pandas dataframes
@@ -105,10 +104,7 @@ def create_adj_matrix(exp_df):
     return adj_matrix
 
 
-if __name__ == '__main__':
-    path_exp = sys.argv[1]
-    path_labels = sys.argv[2]
-
+def get_data(path_exp, path_labels):
     print("Loading in datasets...\n")
     exp_df, labels_df = load_data(path_exp, path_labels)
     # print(exp_df)
@@ -130,6 +126,8 @@ if __name__ == '__main__':
     print("Creating gene adjacency network")
     adj_matrix = create_adj_matrix(var_df)
     print(adj_matrix)
+
+    return exp_df, adj_matrix, labels_df
 
 
 
