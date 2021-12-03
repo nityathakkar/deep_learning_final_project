@@ -11,8 +11,8 @@ from statistics import variance
 def load_data(path_exp, path_labels):
     exp_df = pd.read_csv(path_exp, index_col=0)
     labels_df = pd.read_csv(path_labels)
-    print("Gene expression matrix shape: ", exp_df.shape)
-    return exp_df, labels_df
+    labels_array = labels_df.values
+    return exp_df, labels_array
 
 # TO DO ONCE HAVE REAL DATA!
 # remove unlabeled cells and cells labelled as debris and doublets
@@ -106,7 +106,7 @@ def create_adj_matrix(exp_df):
 
 def get_data(path_exp, path_labels):
     print("Loading in datasets...\n")
-    exp_df, labels_df = load_data(path_exp, path_labels)
+    exp_df, labels_array = load_data(path_exp, path_labels)
     # print(exp_df)
 
     print("Removing all 0 columns...\n")
@@ -127,7 +127,7 @@ def get_data(path_exp, path_labels):
     adj_matrix = create_adj_matrix(var_df)
     print(adj_matrix)
 
-    return exp_df, adj_matrix, labels_df
+    return exp_df, adj_matrix, labels_array
 
 
 
