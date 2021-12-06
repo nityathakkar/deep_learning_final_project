@@ -5,7 +5,7 @@ import math
 import tensorflow as tf
 from data_preprocessing import get_data
 from sklearn import preprocessing
-from gcn import gcn
+from gcn import GCN
 
 
 def train(model, train_inputs, train_labels):
@@ -40,7 +40,8 @@ def train(model, train_inputs, train_labels):
         with tf.GradientTape() as tape:
             
             # Call model.call and model.loss within GradientTape()
-            preds = model.call(X_batch)
+            probs = model.call(X_batch)
+            preds = tf.math.argmax(probs)
             loss = model.loss(preds, Y_batch)
             # model.loss_list.append(np.average(loss))
 
@@ -120,12 +121,13 @@ def main(path_exp, path_labels):
 
     labels_encoded, classes = encode_labels(labels_array)
 
+    model = GCN()
 
-
-    # num_epochs = 100
-    # for i in range(num_epochs):
-    #     print("Epoch:", i)
-        # TO DO: Call train
+    num_epochs = 100
+    for i in range(num_epochs):
+        loss_list = train(model, exp_df, adj_matrix)
+        print("Epoch:", i)
+        
 
     # TO DO: CTest model!
 
