@@ -5,7 +5,7 @@ import stringdb
 import math
 from statistics import variance
 from sklearn import preprocessing
-from sklearn import to_categorical
+#from sklearn import to_categorical
 import tensorflow as tf
 
 
@@ -119,19 +119,22 @@ def spilt_data(gene_exp, labels_array):
     # Shuffle the data
     num_cells = gene_exp.shape[0]
     ind = np.arange(0, num_cells)
+    ind = tf.convert_to_tensor(ind, dtype=tf.int32)
+    # ind = tf.range(0, num_cells)
+    print("ind type ", type(ind))
     tf.random.shuffle(ind)
 
     train_inputs = tf.gather(gene_exp, ind)
     train_labels = tf.gather(labels_array, ind)
     
     
-    train_ind = ind[0: int(0.8*num_cells)]
-    val_ind = ind[int(0.8*num_cells):int(0.9*num_cells)]
-    test_ind = ind[int(0.9*num_cells):]
+    # train_ind = ind[0: int(0.8*num_cells)]
+    # val_ind = ind[int(0.8*num_cells):int(0.9*num_cells)]
+    # test_ind = ind[int(0.9*num_cells):]
     
-    train_data = train_inputs[train_ind]
-    val_data = train_inputs[val_ind]
-    test_data = train_inputs[test_ind]
+    train_data = train_inputs[0: int(0.8*num_cells)]
+    val_data = train_inputs[int(0.8*num_cells):int(0.9*num_cells)]
+    test_data = train_inputs[int(0.9*num_cells):]
 
     train_labels = train_labels[train_ind]
     val_labels = train_labels[val_ind]
