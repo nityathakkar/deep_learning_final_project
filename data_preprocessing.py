@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
-import sys
-# from sklearn.preprocessing import MinMaxScaler
 import heapq
 import stringdb
 import math
 from statistics import variance
+from sklearn import preprocessing
+from sklearn import to_categorical
+import tensorflow as tf
+
 
 # Load csv file into pandas dataframes
 def load_data(path_exp, path_labels):
@@ -74,14 +76,14 @@ def create_adj_matrix(exp_df):
     gene_network = gene_network.drop_duplicates()
 
     gene_network = gene_network.loc[:, ['preferredName_A', 'preferredName_B', 'score']]
-    print(gene_network)
+    # print(gene_network)
 
     col_A = np.unique(gene_network.loc[:,'preferredName_A'])
     col_B = np.unique(gene_network.loc[:,'preferredName_B'])
 
     genes = np.unique(np.concatenate([col_A, col_B]))  
     adj_matrix = pd.DataFrame(index=genes, columns=genes)
-    count = 0
+    # count = 0
     np.fill_diagonal(adj_matrix.values, 0) # Fill the diagonal with 0 (we don't want self loops)
     for g1 in col_A:
         match_1_df = gene_network.loc[gene_network['preferredName_A'] == g1]
@@ -90,7 +92,7 @@ def create_adj_matrix(exp_df):
         gene2_col = np.unique(match_1_df.loc[:,'preferredName_B'])
         for g2 in gene2_col:
             if math.isnan(adj_matrix.loc[g1,g2]):
-                count +=1
+                # count +=1
                 # print(g2)
                 match_2_df = match_1_df.loc[match_1_df['preferredName_B'] == g2]
                 # print(match_2_df)
@@ -100,10 +102,43 @@ def create_adj_matrix(exp_df):
 
     adj_matrix = adj_matrix.fillna(0)
     adj_matrix = adj_matrix.div(adj_matrix.sum(axis=1), axis=0)
-    print("filled #: ", count)
+    # print("filled #: ", count)
     return adj_matrix
 
 
+def encode_labels(labels_array):
+    label_encoder = preprocessing.LabelEncoder()
+    labels = label_encoder.fit_transform(labels_array)
+    print(labels[0])
+    # labels = to_categorical(labels)
+    
+    return labels, len(label_encoder.classes_)
+    
+def spilt_data(gene_exp, labels_array):
+
+    # Shuffle the data
+    num_cells = gene_exp.shape[0]
+    ind = np.arange(0, num_cells)
+    tf.random.shuffle(ind)
+
+    train_inputs = tf.gather(gene_exp, ind)
+    train_labels = tf.gather(labels_array, ind)
+    
+    
+    train_ind = ind[0: int(0.8*num_cells)]
+    val_ind = ind[int(0.8*num_cells):int(0.9*num_cells)]
+    test_ind = ind[int(0.9*num_cells):]
+    
+    train_data = train_inputs[train_ind]
+    val_data = train_inputs[val_ind]
+    test_data = train_inputs[test_ind]
+
+    train_labels = train_labels[train_ind]
+    val_labels = train_labels[val_ind]
+    test_labels = train_labels[test_ind]
+
+    return train_data, val_data, test_data, train_labels, val_labels, test_labels
+    
 def get_data(path_exp, path_labels):
     print("Loading in datasets...\n")
     exp_df, labels_array = load_data(path_exp, path_labels)
@@ -123,13 +158,14 @@ def get_data(path_exp, path_labels):
     # to_save = var_df.T
     # to_save.to_csv('gene_exp.csv')
 
-    print("Creating gene adjacency network")
+    print("Creating gene adjacency network...\n")
     adj_matrix = create_adj_matrix(var_df)
     print(adj_matrix)
 
-    return exp_df, adj_matrix, labels_array
+    print("Encode labels...\n")
+    labels, num_classes = encode_labels(labels_array)
 
+    print("Splitting data into train, validation, and test...\n")
+    train_data, val_data, test_data, train_labels, val_labels, test_labels = spilt_data(var_df, labels)
 
-
-
-    
+    return train_data, val_data, test_data, train_labels, val_labels, test_labels, adj_matrix, num_classes

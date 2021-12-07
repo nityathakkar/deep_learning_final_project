@@ -7,7 +7,7 @@ import tensorflow as tf
 # FC layer to reconstruct the gene expression values.
 
 class GCN(tf.keras.Model):
-    def __init__(self, num_genes, num_cells):
+    def __init__(self, num_genes, num_classes):
     # define all the layers, hyperparameters
         super(GCN, self).__init__()
 
@@ -16,27 +16,26 @@ class GCN(tf.keras.Model):
         self.optimizer = tf.keras.optimizers.Adam(self.learning_rate)
         self.batch_size = 128
         self.num_genes = num_genes
-        self.num_cells = num_cells
+        self.num_classes = num_classes
         self.pool_size = 8 # Paper specifies this must be a power of 2
         
         # define layers
         self.encoder = tf.keras.Sequential([tf.keras.layers.MaxPool1D(pool_size = self.pool_size), tf.keras.Flatten(), tf.keras.layers.Dense(32, activation = 'relu')])
 
-        self.decoder_layer = tf.keras.layers.Dense(self.num_genes, activation='relu')
+        self.decoder_layer = tf.keras.layers.Dense([self.batch_size, self.num_genes], activation='relu')
 
         # TO DO: change sizes later potentially (these are sizes used in paper)
         self.gene_exp1 = tf.keras.layers.Dense(256, activation='relu')
         self.gene_exp2 = tf.keras.layers.Dense(32, activation='relu')
 
         # self.final = tf.keras.layers.Dense(self.num_cells, activation='softmax')
-        self.final = tf.keras.layers.Dense(self.num_cells, activation='log_softmax')
+        self.final = tf.keras.layers.Dense(self.num_classes, activation='log_softmax')
 
 
 
     def gcn_layer(self, adj_matrix, gene_exp):
         adj_binary = pd.DataFrame(np.where(adj_matrix != 0, 1, 0), index=adj_matrix.index, columns=adj_matrix.columns)
         num_edges = adj_binary.apply(sum(), axis=1)
-        
         
         adj_array = adj_matrix.to_numpy()
         gene_array = gene_exp.to_numpy()
@@ -102,12 +101,12 @@ class GCN(tf.keras.Model):
 
         final_out = self.final_layer(gcn_encoder_out, NN_gene_exp_out)
 
-        return final_out
+        return decoder_out, final_out
 
 
-    def loss_encoder(self, encoder_pred, encoder_labels, final_pred, final_labels):
+    def loss(self, decoder_pred, encoder_labels, final_pred, final_labels):
 
-        loss1 = tf.keras.metrics.mean_squared_error(encoder_labels, encoder_pred)
+        loss1 = tf.keras.metrics.mean_squared_error(encoder_labels, decoder_pred)
         loss1 = tf.reduce_mean(loss1)
 
         reg_1 = 1
