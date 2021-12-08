@@ -56,8 +56,10 @@ class GCN(tf.keras.Model):
 
         L = I + tf.linalg.matmul(tf.math.pow(D, -1/2), tf.linalg.matmul(adj_tensor, tf.math.pow(D, 1/2)))
 
+
         # eig_vec, eig_val, eig_vec_T = np.linalg.svd(L)
-        eig_val, eig_vec = tf.linalg.eigh(L)
+        print(L == tf.transpose(L))
+        eig_val, eig_vec = tf.linalg.eig(L)
 
         K = 5
         beta = tf.Variable(tf.random.truncated_normal([K]))

@@ -7,6 +7,7 @@ from statistics import variance
 from sklearn import preprocessing
 #from sklearn import to_categorical
 import tensorflow as tf
+import torch
 
 
 # Load csv file into pandas dataframes
@@ -172,12 +173,18 @@ def get_data(path_exp, path_labels):
     adj_matrix = create_adj_matrix(var_df)
     # print(adj_matrix)
 
-    print("Encode labels...\n")
-    print(labels_array)
+
     labels, num_classes = encode_labels(labels_array)
-    print(labels)
+
 
     print("Splitting data into train, validation, and test...\n")
     train_data, val_data, test_data, train_labels, val_labels, test_labels = spilt_data(var_df, labels)
+
+    torch.save(tf.from_numpy(tf.make_ndarray(train_data)), "train_data.txt")
+    torch.save(tf.from_numpy(tf.make_ndarray(val_data)), "val_data.txt")
+    torch.save(tf.from_numpy(tf.make_ndarray(test_data)), "test_data.txt")
+    torch.save(tf.from_numpy(tf.make_ndarray(train_labels)), "train_labels.txt")
+    torch.save(tf.from_numpy(tf.make_ndarray(val_labels)), "val_labels.txt")
+    torch.save(tf.from_numpy(tf.make_ndarray(test_labels)), "test_labels.txt")
 
     return train_data, val_data, test_data, train_labels, val_labels, test_labels, adj_matrix, num_classes
