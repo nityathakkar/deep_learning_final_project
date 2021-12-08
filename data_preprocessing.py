@@ -35,6 +35,7 @@ def remove_zero_col(exp_df):
 # Transform gene expression values into log scale and normalize each dataset by min–max scaling
 def normalize(exp_df):
     log_df = np.log2(exp_df+1)
+    
     # Min-max scaling:
     normalize_df = (log_df-log_df.min())/(log_df.max()-log_df.min())
     return normalize_df
@@ -49,9 +50,6 @@ def calc_variance(exp_df):
     keys = exp_df.columns
     variance_dict = dict(zip(keys, var_values))
 
-    # for col_name in tqdm(exp_df.columns):
-    #     variance_dict[col_name] = exp_df.var()[col_name]
-
     # Sort the dict in descending order and take top 1000 largest entries in dict
     top_1000 = heapq.nlargest(1000, variance_dict, key=variance_dict.get)
 
@@ -59,6 +57,15 @@ def calc_variance(exp_df):
     df_subset = exp_df.loc[:, top_1000]
     return df_subset
 
+def normalize_adj_matrix(mx):
+    """Row-normalize sparse matrix"""
+    rowsum = np.array(mx.sum(1))
+    r_inv = np.power(rowsum, -1).flatten()
+    r_inv[np.isinf(r_inv)] = 0.
+    r_mat_inv = sp.diags(r_inv)
+    mx = r_mat_inv.dot(mx)
+    return mx
+    
 # Construct gene adjacency network from the selected genes
 def create_adj_matrix(exp_df):  
     # elements in matrix represent the confident score between pairs of genes extracted from the gene–gene interaction database (from StringDB)
@@ -67,50 +74,49 @@ def create_adj_matrix(exp_df):
     
     
     genes = list(exp_df.columns.values)
-    # print(genes)
     
     string_ids = stringdb.get_string_ids(genes)
     gene_network = stringdb.get_network(string_ids.queryItem)
-    # gene_network.to_csv('network.csv')
 
     # TO CHECK LATER: WHY DUPLICATES CREATED?
     gene_network = gene_network.drop_duplicates()
 
     gene_network = gene_network.loc[:, ['preferredName_A', 'preferredName_B', 'score']]
-    # print(gene_network)
 
     col_A = np.unique(gene_network.loc[:,'preferredName_A'])
     col_B = np.unique(gene_network.loc[:,'preferredName_B'])
 
     genes = np.unique(np.concatenate([col_A, col_B]))  
     adj_matrix = pd.DataFrame(index=genes, columns=genes)
-    # count = 0
+
     np.fill_diagonal(adj_matrix.values, 0) # Fill the diagonal with 0 (we don't want self loops)
+    
     for g1 in col_A:
+        
         match_1_df = gene_network.loc[gene_network['preferredName_A'] == g1]
-        # print(g1)
-        # print(match_1_df)
+
         gene2_col = np.unique(match_1_df.loc[:,'preferredName_B'])
-        for g2 in gene2_col:
+    
+        for g2 in gene2_col:    
             if math.isnan(adj_matrix.loc[g1,g2]):
-                # count +=1
-                # print(g2)
+
                 match_2_df = match_1_df.loc[match_1_df['preferredName_B'] == g2]
-                # print(match_2_df)
-                # print(match_2_df['score'])
+
                 adj_matrix.loc[g1,g2] = float(match_2_df['score'])
                 adj_matrix.loc[g2, g1] = float(match_2_df['score'])
 
     adj_matrix = adj_matrix.fillna(0)
-    adj_matrix = adj_matrix.div(adj_matrix.sum(axis=1), axis=0)
-    # print("filled #: ", count)
+    # adj_matrix = adj_matrix.div(adj_matrix.sum(axis=1), axis=0)
+    # adj_matrix = normalize_adj_matrix(adj_matrix)
+
+    print(np.all(adj_matrix.values == adj_matrix.values.T))    
     return adj_matrix
 
 
 def encode_labels(labels_array):
     label_encoder = preprocessing.LabelEncoder()
     labels = label_encoder.fit_transform(labels_array.ravel())
-    print(labels[0])
+    # print(labels[0])
     # labels = to_categorical(labels)
     
     return labels, len(label_encoder.classes_)
@@ -128,17 +134,11 @@ def spilt_data(gene_exp, labels_array):
     num_cells = gene_exp.shape[0]
     ind = np.arange(0, num_cells)
     ind = tf.convert_to_tensor(ind, dtype=tf.int32)
-    # ind = tf.range(0, num_cells)
-    # print("ind type ", type(ind))
+
     tf.random.shuffle(ind)
 
     train_inputs = tf.gather(gene_tensor, ind)
     train_labels = tf.gather(labels_tensor, ind)
-    
-    
-    # train_ind = ind[0: int(0.8*num_cells)]
-    # val_ind = ind[int(0.8*num_cells):int(0.9*num_cells)]
-    # test_ind = ind[int(0.9*num_cells):]
     
     train_data = train_inputs[0: int(0.8*num_cells)]
     val_data = train_inputs[int(0.8*num_cells):int(0.9*num_cells)]
@@ -153,38 +153,41 @@ def spilt_data(gene_exp, labels_array):
 def get_data(path_exp, path_labels):
     print("Loading in datasets...\n")
     exp_df, labels_array = load_data(path_exp, path_labels)
-    # print(exp_df)
 
     print("Removing all 0 columns...\n")
     no_zero_df = remove_zero_col(exp_df)
-    # print(no_zero_df)
 
     print("Normalzing data...\n")
     normalize_df = normalize(no_zero_df)
-    # print(normalize_df)
 
     print("Calculating most variant genes...\n")
     var_df = calc_variance(normalize_df)
-    # print(var_df)
-    # to_save = var_df.T
-    # to_save.to_csv('gene_exp.csv')
 
     print("Creating gene adjacency network...\n")
     adj_matrix = create_adj_matrix(var_df)
-    # print(adj_matrix)
 
-
+    print("Encoding labels...\n")
     labels, num_classes = encode_labels(labels_array)
 
 
     print("Splitting data into train, validation, and test...\n")
     train_data, val_data, test_data, train_labels, val_labels, test_labels = spilt_data(var_df, labels)
 
-    torch.save(tf.from_numpy(tf.make_ndarray(train_data)), "train_data.txt")
-    torch.save(tf.from_numpy(tf.make_ndarray(val_data)), "val_data.txt")
-    torch.save(tf.from_numpy(tf.make_ndarray(test_data)), "test_data.txt")
-    torch.save(tf.from_numpy(tf.make_ndarray(train_labels)), "train_labels.txt")
-    torch.save(tf.from_numpy(tf.make_ndarray(val_labels)), "val_labels.txt")
-    torch.save(tf.from_numpy(tf.make_ndarray(test_labels)), "test_labels.txt")
+    train_data_npy = train_data.numpy()
+    val_data_npy = val_data.numpy()
+    test_data_npy = test_data.numpy()
+    train_labels_npy = train_labels.numpy()
+    val_labels_npy = val_labels.numpy()
+    test_labels_npy = test_labels.numpy()
+
+    np.save("train_data", train_data_npy)
+    np.save("val_data", val_data_npy)
+    np.save("test_data", test_data_npy)
+    np.save("train_labels", train_labels_npy)
+    np.save("val_labels", val_labels_npy)
+    np.save("test_labels", test_labels_npy)
+
+    adj_matrix.to_csv("adj_matrix.csv")
+    print("num classes: ", num_classes)
 
     return train_data, val_data, test_data, train_labels, val_labels, test_labels, adj_matrix, num_classes
