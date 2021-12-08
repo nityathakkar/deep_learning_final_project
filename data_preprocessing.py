@@ -108,7 +108,7 @@ def create_adj_matrix(exp_df):
 
 def encode_labels(labels_array):
     label_encoder = preprocessing.LabelEncoder()
-    labels = label_encoder.fit_transform(labels_array)
+    labels = label_encoder.fit_transform(labels_array.ravel())
     print(labels[0])
     # labels = to_categorical(labels)
     
@@ -116,16 +116,23 @@ def encode_labels(labels_array):
     
 def spilt_data(gene_exp, labels_array):
 
+    # Convert gene_exp df into an np array
+    gene_exp_values = gene_exp.values
+
+    # Convert gene_exp_values and labels_array to tensors
+    gene_tensor = tf.convert_to_tensor(gene_exp_values, dtype=tf.float32)
+    labels_tensor = tf.convert_to_tensor(labels_array, dtype=tf.int32)
+
     # Shuffle the data
     num_cells = gene_exp.shape[0]
     ind = np.arange(0, num_cells)
     ind = tf.convert_to_tensor(ind, dtype=tf.int32)
     # ind = tf.range(0, num_cells)
-    print("ind type ", type(ind))
+    # print("ind type ", type(ind))
     tf.random.shuffle(ind)
 
-    train_inputs = tf.gather(gene_exp, ind)
-    train_labels = tf.gather(labels_array, ind)
+    train_inputs = tf.gather(gene_tensor, ind)
+    train_labels = tf.gather(labels_tensor, ind)
     
     
     # train_ind = ind[0: int(0.8*num_cells)]
@@ -136,9 +143,9 @@ def spilt_data(gene_exp, labels_array):
     val_data = train_inputs[int(0.8*num_cells):int(0.9*num_cells)]
     test_data = train_inputs[int(0.9*num_cells):]
 
-    train_labels = train_labels[train_ind]
-    val_labels = train_labels[val_ind]
-    test_labels = train_labels[test_ind]
+    train_labels = train_labels[0: int(0.8*num_cells)]
+    val_labels = train_labels[int(0.8*num_cells):int(0.9*num_cells)]
+    test_labels = train_labels[int(0.9*num_cells):]
 
     return train_data, val_data, test_data, train_labels, val_labels, test_labels
     
@@ -163,10 +170,12 @@ def get_data(path_exp, path_labels):
 
     print("Creating gene adjacency network...\n")
     adj_matrix = create_adj_matrix(var_df)
-    print(adj_matrix)
+    # print(adj_matrix)
 
     print("Encode labels...\n")
+    print(labels_array)
     labels, num_classes = encode_labels(labels_array)
+    print(labels)
 
     print("Splitting data into train, validation, and test...\n")
     train_data, val_data, test_data, train_labels, val_labels, test_labels = spilt_data(var_df, labels)

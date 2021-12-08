@@ -89,6 +89,25 @@ def main(path_exp, path_labels):
    
     # Process data
     train_data, val_data, test_data, train_labels, val_labels, test_labels, adj_matrix, num_classes = get_data(path_exp, path_labels)
+    # np.save("train_data", train_data, allow_pickle=True)
+    # np.save("val_data", val_data, allow_pickle=True)
+    # np.save("test_data", test_data, allow_pickle=True)
+    # np.save("train_labels", train_labels, allow_pickle=True)
+    # np.save("val_labels", val_labels, allow_pickle=True)
+    # np.save("test_labels", test_labels, allow_pickle=True)
+    # adj_matrix.to_csv("adj_matrix")
+    # print("Num classes: ", num_classes)
+
+
+    # train_data = np.load("train_data.npy", allow_pickle=True)
+    # val_data = np.load("val_data.npy", allow_pickle=True)
+    # test_data = np.load("test_data.npy", allow_pickle=True)
+    # train_labels = np.load("train_labels.npy", allow_pickle=True)
+    # val_labels = np.load("val_labels.npy", allow_pickle=True)
+    # test_labels = np.load("test_labels.npy", allow_pickle=True)
+    # adj_matrix = pd.read_csv('adj_matrix', index_col=0)
+    # num_classes = 5
+
 
     num_genes = adj_matrix.shape[0]
     model = GCN(num_genes, num_classes)
@@ -100,6 +119,7 @@ def main(path_exp, path_labels):
         
 
     # TO DO: CTest model!
+    visualize_loss(loss_list)
 
 
     return
