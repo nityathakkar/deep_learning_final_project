@@ -141,16 +141,16 @@ def spilt_data(gene_exp, labels_array):
 
     tf.random.shuffle(ind)
 
-    train_inputs = tf.gather(gene_tensor, ind)
-    train_labels = tf.gather(labels_tensor, ind)
+    train_inputs_whole = tf.gather(gene_tensor, ind)
+    train_labels_whole = tf.gather(labels_tensor, ind)
     
-    train_data = train_inputs[0: int(0.8*num_cells)]
-    val_data = train_inputs[int(0.8*num_cells):int(0.9*num_cells)]
-    test_data = train_inputs[int(0.9*num_cells):]
+    train_data = train_inputs_whole[0: int(0.8*num_cells)]
+    val_data = train_inputs_whole[int(0.8*num_cells):int(0.9*num_cells)]
+    test_data = train_inputs_whole[int(0.9*num_cells):]
 
-    train_labels = train_labels[0: int(0.8*num_cells)]
-    val_labels = train_labels[int(0.8*num_cells):int(0.9*num_cells)]
-    test_labels = train_labels[int(0.9*num_cells):]
+    train_labels = train_labels_whole[0: int(0.8*num_cells)]
+    val_labels = train_labels_whole[int(0.8*num_cells):int(0.9*num_cells)]
+    test_labels = train_labels_whole[int(0.9*num_cells):]
 
     return train_data, val_data, test_data, train_labels, val_labels, test_labels
     
@@ -193,6 +193,7 @@ def get_data(path_exp, path_labels):
     np.save("test_labels", test_labels_npy)
 
     adj_matrix.to_csv("adj_matrix.csv")
-    print("num classes: ", num_classes)
+    # print("num classes: ", num_classes)
 
+    print("Preprocessing complete:)\n")
     return train_data, val_data, test_data, train_labels, val_labels, test_labels, adj_matrix, num_classes
