@@ -8,6 +8,7 @@ from sklearn import preprocessing
 #from sklearn import to_categorical
 import tensorflow as tf
 import torch
+import scipy.sparse as sp
 
 
 # Load csv file into pandas dataframes
@@ -56,15 +57,6 @@ def calc_variance(exp_df):
     # Subset dataframe to be 1000 most variant genes
     df_subset = exp_df.loc[:, top_1000]
     return df_subset
-
-def normalize_adj_matrix(mx):
-    """Row-normalize sparse matrix"""
-    rowsum = np.array(mx.sum(1))
-    r_inv = np.power(rowsum, -1).flatten()
-    r_inv[np.isinf(r_inv)] = 0.
-    r_mat_inv = sp.diags(r_inv)
-    mx = r_mat_inv.dot(mx)
-    return mx
     
 # Construct gene adjacency network from the selected genes
 def create_adj_matrix(exp_df):  
@@ -78,11 +70,8 @@ def create_adj_matrix(exp_df):
     string_ids = stringdb.get_string_ids(genes)
     gene_network = stringdb.get_network(string_ids.queryItem)
 
-    # TO CHECK LATER: WHY DUPLICATES CREATED?
     gene_network = gene_network.drop_duplicates()
-
     gene_network = gene_network.loc[:, ['preferredName_A', 'preferredName_B', 'score']]
-    # print(gene_network)
 
     col_A = np.unique(gene_network.loc[:,'preferredName_A'])
     col_A_updated = np.intersect1d(col_A, genes)
@@ -91,21 +80,11 @@ def create_adj_matrix(exp_df):
     col_B_updated = np.intersect1d(col_B, genes)
 
     col_A_diff = np.setxor1d(col_A, genes)
-    # print(col_A_diff)
     col_B_diff = np.setxor1d(col_B, genes)
-    # print(col_B_diff)
 
     gene_network_subset1 = gene_network[(gene_network.preferredName_A.isin(col_A_diff) == False)]
     gene_network_subset = gene_network_subset1[(gene_network_subset1.preferredName_B.isin(col_B_diff) == False)]
-    # print(gene_network_subset)
 
-
-    # first, figure out which genes are in gene_network that aren't in genes
-    # only keep rows with genes we have (so if one gene name not in colA or colB remove whole row)
-    # create adj matrix
-    # subset exp_df to be just genes in adj_matrix
-
-    # genes_adj_matrix = np.unique(np.concatenate([col_A, col_B]))  
     genes_adj_matrix = np.unique(np.concatenate([col_A_updated, col_B_updated]))  
 
     exp_df_subset = exp_df[genes_adj_matrix]
@@ -129,27 +108,23 @@ def create_adj_matrix(exp_df):
                 adj_matrix.loc[g2, g1] = float(match_2_df['score'])
 
     adj_matrix = adj_matrix.fillna(0)
-    # adj_matrix = adj_matrix.div(adj_matrix.sum(axis=1), axis=0)
-    adj_matrix = normalize_adj_matrix(adj_matrix)
-
-    # print(np.all(adj_matrix.values == adj_matrix.values.T))    
-
-    # print(exp_df)
-    # exp_df = exp_df[exp_df.columns.intersection(genes_adj_matrix)]
-    # print(exp_df)
-
-    # adj_matrix.to_csv('adj_matrix_new.csv')
     return exp_df_subset, adj_matrix
 
+def one_hot(labels, class_size):
 
-def encode_labels(labels_array):
-    label_encoder = preprocessing.LabelEncoder()
-    labels = label_encoder.fit_transform(labels_array.ravel())
-    # print(labels[0])
-    # labels = to_categorical(labels)
+    labels_unique = np.unique(labels)
+    labels_dict = dict((j,i) for i,j in enumerate(labels_unique))
     
-    return labels, len(label_encoder.classes_)
+    targets = np.zeros((labels.shape[0], class_size))
+    for i, label in enumerate(labels):
+        targets[i, labels_dict[label[0]]] = 1
+    targets = tf.convert_to_tensor(targets)
+    targets = tf.cast(targets, tf.int32)
+
+    # Num cells x num classes
+    return targets
     
+
 def spilt_data(gene_exp, labels_array):
 
     # Convert gene_exp df into an np array
@@ -196,7 +171,8 @@ def get_data(path_exp, path_labels):
     exp_df_subset, adj_matrix = create_adj_matrix(var_df)
 
     print("Encoding labels...\n")
-    labels, num_classes = encode_labels(labels_array)
+    num_classes = len(np.unique(labels_array))
+    labels = one_hot(labels_array, num_classes)
 
 
     print("Splitting data into train, validation, and test...\n")

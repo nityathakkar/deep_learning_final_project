@@ -7,10 +7,12 @@ import tensorflow as tf
 from data_preprocessing import get_data
 from sklearn import preprocessing
 from gcn import GCN
-
+import matplotlib.pyplot as plt
 
 def train(model, train_inputs, train_labels, adj_matrix):
     loss_list = []
+
+    print(train_labels.shape)
 
     for i in range(0, int(len(train_inputs)/model.batch_size)):
         # Loop through all the batches
@@ -21,9 +23,7 @@ def train(model, train_inputs, train_labels, adj_matrix):
             
             # Call model.call and model.loss within GradientTape()
             decoder_pred, final_pred = model.call(adj_matrix, X_batch)
-            # final_pred_max = tf.math.argmax(final_pred, axis=1)
-            # print(final_pred.shape)
-            # print(Y_batch.shape)
+
             loss = model.loss(decoder_pred, X_batch, final_pred, Y_batch)
             loss_list.append(loss)
 
@@ -114,16 +114,18 @@ def main(path_exp, path_labels):
 
     num_genes = adj_matrix.shape[0]
     model = GCN(num_genes, num_classes)
+    loss_list = []
 
-    num_epochs = 1
+    num_epochs = 5
     for i in range(num_epochs):
-        loss_list = train(model, train_data, train_labels, adj_matrix)
         print("Epoch:", i)
+        loss = train(model, train_data, train_labels, adj_matrix)
+        loss_list.append(loss)
+        
         
 
     # TO DO: CTest model!
-    # visualize_loss(loss_list)
-
+    visualize_loss(loss_list)
 
     return
 
