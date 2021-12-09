@@ -21,7 +21,9 @@ def train(model, train_inputs, train_labels, adj_matrix):
             
             # Call model.call and model.loss within GradientTape()
             decoder_pred, final_pred = model.call(adj_matrix, X_batch)
-            final_pred = tf.math.argmax(final_pred)
+            # final_pred_max = tf.math.argmax(final_pred, axis=1)
+            # print(final_pred.shape)
+            # print(Y_batch.shape)
             loss = model.loss(decoder_pred, X_batch, final_pred, Y_batch)
             loss_list.append(loss)
 
@@ -33,7 +35,7 @@ def train(model, train_inputs, train_labels, adj_matrix):
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-    return loss_list
+    return tf.reduce_mean(loss_list)
 
 def test(model, test_inputs, test_labels):
     """
@@ -106,6 +108,7 @@ def main(path_exp, path_labels):
     test_labels = tf.convert_to_tensor(test_labels, dtype=tf.float32)
 
     adj_matrix = pd.read_csv('adj_matrix.csv', index_col=0)
+    print(adj_matrix.shape)
     num_classes = 5
 
 

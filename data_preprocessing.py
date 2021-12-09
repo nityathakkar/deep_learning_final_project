@@ -82,18 +82,41 @@ def create_adj_matrix(exp_df):
     gene_network = gene_network.drop_duplicates()
 
     gene_network = gene_network.loc[:, ['preferredName_A', 'preferredName_B', 'score']]
+    # print(gene_network)
 
     col_A = np.unique(gene_network.loc[:,'preferredName_A'])
-    col_B = np.unique(gene_network.loc[:,'preferredName_B'])
+    col_A_updated = np.intersect1d(col_A, genes)
 
-    genes = np.unique(np.concatenate([col_A, col_B]))  
-    adj_matrix = pd.DataFrame(index=genes, columns=genes)
+    col_B = np.unique(gene_network.loc[:,'preferredName_B'])
+    col_B_updated = np.intersect1d(col_B, genes)
+
+    col_A_diff = np.setxor1d(col_A, genes)
+    # print(col_A_diff)
+    col_B_diff = np.setxor1d(col_B, genes)
+    # print(col_B_diff)
+
+    gene_network_subset1 = gene_network[(gene_network.preferredName_A.isin(col_A_diff) == False)]
+    gene_network_subset = gene_network_subset1[(gene_network_subset1.preferredName_B.isin(col_B_diff) == False)]
+    # print(gene_network_subset)
+
+
+    # first, figure out which genes are in gene_network that aren't in genes
+    # only keep rows with genes we have (so if one gene name not in colA or colB remove whole row)
+    # create adj matrix
+    # subset exp_df to be just genes in adj_matrix
+
+    # genes_adj_matrix = np.unique(np.concatenate([col_A, col_B]))  
+    genes_adj_matrix = np.unique(np.concatenate([col_A_updated, col_B_updated]))  
+
+    exp_df_subset = exp_df[genes_adj_matrix]
+
+    adj_matrix = pd.DataFrame(index=genes_adj_matrix, columns=genes_adj_matrix)
 
     np.fill_diagonal(adj_matrix.values, 0) # Fill the diagonal with 0 (we don't want self loops)
     
-    for g1 in col_A:
+    for g1 in col_A_updated:
         
-        match_1_df = gene_network.loc[gene_network['preferredName_A'] == g1]
+        match_1_df = gene_network_subset.loc[gene_network_subset['preferredName_A'] == g1]
 
         gene2_col = np.unique(match_1_df.loc[:,'preferredName_B'])
     
@@ -107,10 +130,16 @@ def create_adj_matrix(exp_df):
 
     adj_matrix = adj_matrix.fillna(0)
     # adj_matrix = adj_matrix.div(adj_matrix.sum(axis=1), axis=0)
-    # adj_matrix = normalize_adj_matrix(adj_matrix)
+    adj_matrix = normalize_adj_matrix(adj_matrix)
 
-    print(np.all(adj_matrix.values == adj_matrix.values.T))    
-    return adj_matrix
+    # print(np.all(adj_matrix.values == adj_matrix.values.T))    
+
+    # print(exp_df)
+    # exp_df = exp_df[exp_df.columns.intersection(genes_adj_matrix)]
+    # print(exp_df)
+
+    # adj_matrix.to_csv('adj_matrix_new.csv')
+    return exp_df_subset, adj_matrix
 
 
 def encode_labels(labels_array):
@@ -164,14 +193,14 @@ def get_data(path_exp, path_labels):
     var_df = calc_variance(normalize_df)
 
     print("Creating gene adjacency network...\n")
-    adj_matrix = create_adj_matrix(var_df)
+    exp_df_subset, adj_matrix = create_adj_matrix(var_df)
 
     print("Encoding labels...\n")
     labels, num_classes = encode_labels(labels_array)
 
 
     print("Splitting data into train, validation, and test...\n")
-    train_data, val_data, test_data, train_labels, val_labels, test_labels = spilt_data(var_df, labels)
+    train_data, val_data, test_data, train_labels, val_labels, test_labels = spilt_data(exp_df_subset, labels)
 
     train_data_npy = train_data.numpy()
     val_data_npy = val_data.numpy()
